@@ -1,0 +1,11 @@
+{
+  "name": "@bolt/execution",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "src/runtime.ts",
+  "types": "src/runtime.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit"
+  }
+}
