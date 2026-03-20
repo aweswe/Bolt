@@ -31,6 +31,7 @@ export type StreamEvent =
 
 const DEFAULT_GATEWAY_MODEL = 'anthropic/claude-3-5-sonnet';
 const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
+const DEFAULT_MODEL = 'anthropic/claude-3-5-sonnet';
 
 type GatewayResponse = {
   summary: string;
@@ -112,6 +113,11 @@ async function generateWithGateway(prompt: string): Promise<GatewayResponse | nu
 
   if (!token) {
     return null;
+async function generateWithGateway(prompt: string): Promise<GatewayResponse> {
+  const token = process.env.AI_GATEWAY_API_KEY;
+
+  if (!token) {
+    return fallbackResponse(prompt);
   }
 
   const response = await fetch('https://gateway.ai.vercel.com/v1/chat/completions', {
@@ -122,6 +128,7 @@ async function generateWithGateway(prompt: string): Promise<GatewayResponse | nu
     },
     body: JSON.stringify({
       model: process.env.AI_GATEWAY_MODEL ?? DEFAULT_GATEWAY_MODEL,
+      model: process.env.AI_GATEWAY_MODEL ?? DEFAULT_MODEL,
       temperature: 0.2,
       messages: [
         {
@@ -136,6 +143,7 @@ async function generateWithGateway(prompt: string): Promise<GatewayResponse | nu
 
   if (!response.ok) {
     return null;
+    return fallbackResponse(prompt);
   }
 
   const payload = (await response.json()) as {
@@ -159,6 +167,21 @@ async function generateApp(prompt: string): Promise<GatewayResponse> {
 
 export async function runReasoningLoop(input: LoopInput): Promise<LoopResult> {
   const generation = await generateApp(input.prompt);
+  if (!content) return fallbackResponse(prompt);
+
+  try {
+    const parsed = JSON.parse(content) as GatewayResponse;
+    if (!parsed.patch || !Array.isArray(parsed.files) || !parsed.files.length) {
+      return fallbackResponse(prompt);
+    }
+    return parsed;
+  } catch {
+    return fallbackResponse(prompt);
+  }
+}
+
+export async function runReasoningLoop(input: LoopInput): Promise<LoopResult> {
+  const generation = await generateWithGateway(input.prompt);
 
   const steps: ReasoningStep[] = [
     { phase: 'plan', summary: `Structured project goals for ${input.projectId}` },
