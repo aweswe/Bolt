@@ -1,0 +1,14 @@
+{
+  "name": "@bolt/backend",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "src/projects.ts",
+  "types": "src/projects.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1"
+  }
+}

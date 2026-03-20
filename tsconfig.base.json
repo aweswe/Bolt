@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@bolt/ui/*": ["packages/ui/src/*"],
+      "@bolt/ai/*": ["packages/ai/src/*"],
+      "@bolt/backend/*": ["packages/backend/src/*"],
+      "@bolt/execution/*": ["packages/execution/src/*"]
+    }
+  }
+}
