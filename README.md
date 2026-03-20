@@ -67,6 +67,10 @@ Open `http://localhost:3000`.
 4. Ensure Supabase schema has been applied.
 5. Deploy.
 
+Build/runtime pinning for Vercel:
+- Node.js: `20.x`
+- pnpm: `9.12.3` (via `packageManager` + `vercel.json`)
+
 ## Is it ready to build apps now?
 
 **Yes for MVP experimentation**, where you want to:
