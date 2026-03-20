@@ -69,6 +69,7 @@ Open `http://localhost:3000`.
 
 Build/runtime pinning for Vercel:
 - Node.js: `20.x`
+- pnpm: `9.12.3` installed directly via npm (no Corepack in deploy command)
 - pnpm: `9.12.3` (via `packageManager` + `vercel.json`)
 
 ## Is it ready to build apps now?
