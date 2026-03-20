@@ -29,6 +29,8 @@ export type StreamEvent =
   | { type: 'patch'; patch: string }
   | { type: 'done'; steps: ReasoningStep[]; finalPatch: string; files: GeneratedFile[] };
 
+const DEFAULT_GATEWAY_MODEL = 'anthropic/claude-3-5-sonnet';
+const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
 const DEFAULT_MODEL = 'anthropic/claude-3-5-sonnet';
 
 type GatewayResponse = {
@@ -52,6 +54,65 @@ function fallbackResponse(prompt: string): GatewayResponse {
   };
 }
 
+function generationPrompt(prompt: string) {
+  return [
+    'Return JSON only with this exact shape:',
+    '{"summary":string,"patch":string,"files":[{"path":string,"language":string,"content":string}]}.',
+    'Build minimal runnable Next.js files and include app/page.tsx in files array.',
+    `User prompt: ${prompt}`
+  ].join('\n');
+}
+
+function parseGenerationPayload(raw: string, fallbackPrompt: string): GatewayResponse {
+  try {
+    const parsed = JSON.parse(raw) as GatewayResponse;
+    if (!parsed.patch || !Array.isArray(parsed.files) || !parsed.files.length) {
+      return fallbackResponse(fallbackPrompt);
+    }
+    return parsed;
+  } catch {
+    return fallbackResponse(fallbackPrompt);
+  }
+}
+
+async function generateWithGemini(prompt: string): Promise<GatewayResponse | null> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return null;
+
+  const model = process.env.GEMINI_MODEL ?? DEFAULT_GEMINI_MODEL;
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: generationPrompt(prompt) }] }],
+      generationConfig: {
+        temperature: 0.2,
+        responseMimeType: 'application/json'
+      }
+    })
+  });
+
+  if (!response.ok) return null;
+
+  const payload = (await response.json()) as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+  };
+
+  const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) return null;
+
+  return parseGenerationPayload(text, prompt);
+}
+
+async function generateWithGateway(prompt: string): Promise<GatewayResponse | null> {
+  const token = process.env.AI_GATEWAY_API_KEY;
+
+  if (!token) {
+    return null;
 async function generateWithGateway(prompt: string): Promise<GatewayResponse> {
   const token = process.env.AI_GATEWAY_API_KEY;
 
@@ -66,6 +127,7 @@ async function generateWithGateway(prompt: string): Promise<GatewayResponse> {
       authorization: `Bearer ${token}`
     },
     body: JSON.stringify({
+      model: process.env.AI_GATEWAY_MODEL ?? DEFAULT_GATEWAY_MODEL,
       model: process.env.AI_GATEWAY_MODEL ?? DEFAULT_MODEL,
       temperature: 0.2,
       messages: [
@@ -80,6 +142,7 @@ async function generateWithGateway(prompt: string): Promise<GatewayResponse> {
   });
 
   if (!response.ok) {
+    return null;
     return fallbackResponse(prompt);
   }
 
@@ -87,6 +150,23 @@ async function generateWithGateway(prompt: string): Promise<GatewayResponse> {
     choices?: Array<{ message?: { content?: string } }>;
   };
   const content = payload.choices?.[0]?.message?.content?.trim();
+  if (!content) return null;
+
+  return parseGenerationPayload(content, prompt);
+}
+
+async function generateApp(prompt: string): Promise<GatewayResponse> {
+  const gemini = await generateWithGemini(prompt);
+  if (gemini) return gemini;
+
+  const gateway = await generateWithGateway(prompt);
+  if (gateway) return gateway;
+
+  return fallbackResponse(prompt);
+}
+
+export async function runReasoningLoop(input: LoopInput): Promise<LoopResult> {
+  const generation = await generateApp(input.prompt);
   if (!content) return fallbackResponse(prompt);
 
   try {
