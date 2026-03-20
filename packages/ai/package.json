@@ -1,0 +1,11 @@
+{
+  "name": "@bolt/ai",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "src/orchestrator.ts",
+  "types": "src/orchestrator.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit"
+  }
+}
